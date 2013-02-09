@@ -6,21 +6,26 @@ import sys
 import math
 
 from collections import namedtuple
+from itertools import permutations
 
 Element = namedtuple ('Element', 'vertex priority')
 
-def costs (edges, edge):
-    u, v = edge
-    if not edges.has_key ((u, v)):
-        u, v = v, u
-    return edges[(u, v)]
+class undirected_edges(dict):
+    def __getitem__(self, key, second=None):
+        return super(undirected_edges, self).__getitem__(tuple(sorted(key)))
+
+    def __setitem__(self, key, value):
+        super(undirected_edges, self).__setitem__(tuple(sorted(key)),value)
+
+    def has_key(self, key):
+        return super(undirected_edges, self).has_key(tuple(sorted(key)))
 
 def initQueue (vertices, edges, start, queue):
     startVertex = start[0]
     neighbors = start[1]
     for v in vertices:
         if v in neighbors:
-            minCost = min (costs (edges, (startVertex, v)))
+            minCost = min (edges[(startVertex, v)])
             queue.insert (Element (v, minCost))
         else:
             queue.insert (Element (v, sys.maxint))
@@ -28,7 +33,7 @@ def initQueue (vertices, edges, start, queue):
 def minEdge (edges, vertices, vertex, minCost):
     neighbors = vertices[vertex]
     for n in neighbors:
-        if min (costs(edges, (vertex, n))) == minCost:
+        if min (edges[(vertex, n)]) == minCost:
             return n, vertex
 
 def prim_mst (vertices, edges):
@@ -46,15 +51,13 @@ def prim_mst (vertices, edges):
         u, v = minEdge (edges, vertices, v, cost)
         T.add((u, v))
         X.add(v)
-        for (w, x) in edges:
-            if x == v and queue.has_key (w):
-                element = queue.delete(w)
-                key = min (element.priority, min (costs (edges, (v, w))))
-                queue.insert (Element (w, key))
-            elif w == v and queue.has_key (x):
-                element = queue.delete (x)
-                key = min (element.priority, min (costs (edges, (v, x))))
-                queue.insert (Element (x, key))
+
+        for w in vertices:
+            if w != v and queue.has_key(w):
+                if edges.has_key((v, w)):
+                    element = queue.delete(w)
+                    key = min (element.priority, min (edges[(v, w)]))
+                    queue.insert (Element (w, key))
 
     return T
 
@@ -68,12 +71,13 @@ def naive_prim_mst (vertices, edges):
         minCost = sys.maxint
         minU, minV = '', ''
 
-        for (u, v) in edges:
-            if (u in X) and (not v in X):
-                if min(edges[(u, v)]) < minCost:
-                    minCost = min(edges[(u, v)])
-                    minU = u
-                    minV = v
+        for perm in map (permutations, edges):
+            for (u, v) in perm:
+                if (u in X) and (not v in X):
+                    if min(edges[(u, v)]) < minCost:
+                        minCost = min(edges[(u, v)])
+                        minU = u
+                        minV = v
 
         T.add((minU, minV))
         X.add(minV)
@@ -82,7 +86,7 @@ def naive_prim_mst (vertices, edges):
 
 def readFileEuler (filename):
     vertices = {}
-    edges = {}
+    edges = undirected_edges()
     f = open (filename)
     i = 1
     j = 1
@@ -105,7 +109,7 @@ def readFileEuler (filename):
 
 def readFileCoursera (filename):
     vertices = {}
-    edges = {}
+    edges = undirected_edges()
     f = open (filename)
 
     f.readline()
@@ -116,9 +120,7 @@ def readFileCoursera (filename):
         u = edge[0]
         v = edge[1]
         cost = int(edge[2])
-        # Yeah, this is hacky, so what?
         edges[(u, v)] = [cost]
-        edges[(v, u)] = [cost]
         if vertices.has_key(u):
             vertices[u].append(v)
         else:
@@ -142,15 +144,15 @@ def runMST (filename, coursera = False):
           "with Prim's algorithm...\n"
     min_spanning_tree = prim_mst (vertices, edges)
 
-
     minweight = 0
     for edge in min_spanning_tree:
-        minweight += min (costs(edges, edge))
+        minweight += min (edges[edge])
 
     if not coursera:
         print "Saving: ", weight - minweight
     else:
         print "Cost: ", minweight
+    return min_spanning_tree
 
 def main(filename):
     #runMST (filename)
