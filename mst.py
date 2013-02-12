@@ -20,6 +20,47 @@ class undirected_edges(dict):
     def has_key(self, key):
         return super(undirected_edges, self).has_key(tuple(sorted(key)))
 
+class union_find():
+    def __init__ (self, vertices):
+        self.groups = {}
+        self.leaders = {}
+        for v in vertices:
+            leader = v
+            group_vertices = [v]
+            size = 1
+            self.groups[v] = (leader, group_vertices, size)
+            self.leaders[v] = v
+
+    def find (self, vertex):
+        return self.leaders[vertex]
+
+    def union (self, group1, group2):
+        leader1, vertices1, size1 = self.groups[group1]
+        leader2, vertices2, size2 = self.groups[group2]
+
+        if size1 > size2:
+            new_leader = leader1
+            smaller_vertices = vertices2
+            bigger_vertices = vertices1
+            smaller_group = group2
+            bigger_group = group1
+        else:
+            new_leader = leader2
+            smaller_vertices = vertices1
+            bigger_vertices = vertices2
+            smaller_group = group1
+            bigger_group = group2
+
+        for vertex in smaller_vertices:
+            # Add vertices of smaller group to bigger group
+            bigger_vertices.append(vertex)
+            # Update leader of moved vertices
+            self.leaders[vertex] = new_leader
+        # Discard smaller group
+        self.groups.pop(smaller_group)
+        # Update bigger group
+        self.groups[bigger_group] = (new_leader, bigger_vertices, size1 + size2)
+
 def initQueue (vertices, edges, start, queue):
     startVertex = start[0]
     neighbors = start[1]
@@ -58,6 +99,19 @@ def prim_mst (vertices, edges):
                     element = queue.delete(w)
                     key = min (element.priority, min (edges[(v, w)]))
                     queue.insert (Element (w, key))
+
+    return T
+
+def kruskal_mst (vertices, edges):
+    sorted_edges = sorted (edges, key=lambda edge: edges[edge])
+    T = set()
+    uf = union_find(vertices)
+    for (u, v) in sorted_edges:
+        group_u = uf.find(u)
+        group_v = uf.find(v)
+        if group_u != group_v:
+            T.add((u, v))
+            uf.union(group_u, group_v)
 
     return T
 
